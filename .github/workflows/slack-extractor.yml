@@ -24,6 +24,26 @@ jobs:
     - name: Create exports directory
       run: mkdir -p exports
       
+    - name: Debug environment variables
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        SLACK_WORKSPACE_ID: ${{ secrets.SLACK_WORKSPACE_ID }}
+        DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+        DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+        DROPBOX_CLIENT_ID: ${{ secrets.DROPBOX_CLIENT_ID }}
+        DROPBOX_CLIENT_SECRET: ${{ secrets.DROPBOX_CLIENT_SECRET }}
+        DROPBOX_FOLDER_PATH: ${{ secrets.DROPBOX_FOLDER_PATH }}
+      run: |
+        echo "🔍 Debugging environment variables..."
+        echo "SLACK_BOT_TOKEN length: ${#SLACK_BOT_TOKEN}"
+        echo "SLACK_BOT_TOKEN starts with: ${SLACK_BOT_TOKEN:0:5}"
+        echo "SLACK_BOT_TOKEN ends with: ${SLACK_BOT_TOKEN: -5}"
+        echo "All SLACK env vars:"
+        env | grep SLACK
+        echo "All DROPBOX env vars:"
+        env | grep DROPBOX
+        echo "✅ Debug complete"
+      
     - name: Run Slack Extractor
       env:
         SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
