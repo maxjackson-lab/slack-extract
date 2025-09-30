@@ -129,6 +129,13 @@ logger.logLifecycle = (event, details = {}) => {
 };
 
 /**
+ * Log warning messages
+ */
+logger.logWarning = (message, details = {}) => {
+  logger.warn(`Warning: ${message}`, details);
+};
+
+/**
  * Log errors with additional context
  */
 logger.logError = (error, context = {}) => {
