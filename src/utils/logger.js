@@ -1,5 +1,10 @@
 const winston = require('winston');
-const config = require('../config');
+let config;
+try {
+  config = require('../config');
+} catch (e) {
+  config = { app: { logLevel: 'info' } };
+}
 
 /**
  * Logger utility using Winston
@@ -33,7 +38,7 @@ const consoleFormat = winston.format.combine(
 
 // Create logger instance
 const logger = winston.createLogger({
-  level: config.app.logLevel,
+  level: config?.app?.logLevel || 'info',
   format: logFormat,
   defaultMeta: { service: 'slack-extractor' },
   transports: [

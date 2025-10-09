@@ -3,6 +3,7 @@ import * as path from 'path';
 import { ChunkProcessor } from './chunkProcessor';
 import { OpenAIClient } from './openaiClient';
 import { GammaClient } from './gammaClient';
+import config from '../config/index';
 import { 
   AnalysisChunk, 
   GPTAnalysisResult, 
@@ -341,15 +342,12 @@ ${analysis.insights.emergingTrends}
    * Get default configuration
    */
   private getDefaultConfig(overrides?: Partial<AnalysisConfig>): AnalysisConfig {
-    const config = require('../config/index.js');
-    
-    
     return {
       chunkSize: 25,
       maxTokensPerChunk: 200000,
       gptModel: config.analysis.gptModel,
       systemPrompt: config.analysis.systemPrompt,
-      userPromptTemplate: config.analysis.userPrompt,
+      userPromptTemplate: config.analysis.userPromptTemplate,
       retryAttempts: 3,
       retryDelay: 2000,
       ...overrides

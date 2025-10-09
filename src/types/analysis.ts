@@ -21,6 +21,7 @@ export interface AnalysisChunk {
   totalChunks: number;
   messages: SlackMessage[];
   tokenCount: number;
+  content?: string; // Optional content for custom prompts
 }
 
 export interface GPTAnalysisResult {

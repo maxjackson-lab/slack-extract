@@ -1,0 +1,215 @@
+name: Scheduled Slack Analysis & Presentation
+
+on:
+  schedule:
+    # Run every Monday at 9 AM UTC (adjust timezone as needed)
+    - cron: '0 9 * * 1'
+  workflow_dispatch:  # Manual trigger
+  push:
+    branches: [ main ]
+
+jobs:
+  slack-analysis:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build TypeScript
+      run: npm run build
+      
+    - name: Create exports directory
+      run: mkdir -p exports
+      
+    - name: Extract Slack Data
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        SLACK_WORKSPACE_ID: ${{ secrets.SLACK_WORKSPACE_ID }}
+        LOG_LEVEL: info
+      run: |
+        echo "📊 Extracting Slack data..."
+        node dist/index.js --extract-only
+      continue-on-error: true
+      
+    - name: Run Unified Analysis
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        GAMMA_API_KEY: ${{ secrets.GAMMA_API_KEY }}
+        LOG_LEVEL: info
+      run: |
+        if [ -n "$OPENAI_API_KEY" ] && [ -n "$GAMMA_API_KEY" ]; then
+          echo "🧠 Running unified GPT-4o analysis..."
+          # Find the most recent CSV file
+          LATEST_CSV=$(ls -t exports/*.csv 2>/dev/null | head -1)
+          if [ -n "$LATEST_CSV" ]; then
+            echo "📈 Analyzing: $LATEST_CSV"
+            # Create a temporary script to run unified analysis
+            cat > run_unified_workflow.js << 'EOF'
+            require('dotenv').config();
+            const { UnifiedAnalyzer } = require('./dist/services/unifiedAnalyzer');
+            const fs = require('fs');
+            
+            async function runUnifiedWorkflow() {
+              try {
+                const csvFile = process.argv[2] || 'exports/slack-data-export_2025-10-07_23-35-27.csv';
+                console.log(`🚀 Starting unified analysis on: ${csvFile}`);
+                
+                const openaiApiKey = process.env.OPENAI_API_KEY;
+                const gammaApiKey = process.env.GAMMA_API_KEY;
+                
+                if (!openaiApiKey || !gammaApiKey) {
+                  throw new Error('Missing API keys');
+                }
+                
+                const config = {
+                  chunkSize: 1,
+                  maxTokensPerChunk: 200000,
+                  gptModel: 'gpt-4o',
+                  systemPrompt: 'You are an expert community analyst.',
+                  userPromptTemplate: 'Analyze this community data.',
+                  retryAttempts: 3,
+                  retryDelay: 2000
+                };
+                
+                const analyzer = new UnifiedAnalyzer(openaiApiKey, gammaApiKey, config);
+                const result = await analyzer.analyzeUnifiedData(csvFile);
+                
+                console.log('✅ Unified analysis complete!');
+                console.log(`📊 Analyzed ${result.analysis.totalMessages} messages`);
+                console.log(`🔗 Presentation: ${result.presentation.url || 'Generated'}`);
+                console.log(`📝 Report: ${result.markdownFile}`);
+                
+                // Save presentation URL for later use
+                const summary = {
+                  timestamp: new Date().toISOString(),
+                  totalMessages: result.analysis.totalMessages,
+                  presentationUrl: result.presentation.url || 'Generated',
+                  markdownFile: result.markdownFile,
+                  tokensUsed: result.analysis.totalTokens
+                };
+                fs.writeFileSync('exports/analysis-summary.json', JSON.stringify(summary, null, 2));
+                
+              } catch (error) {
+                console.error('❌ Analysis failed:', error.message);
+                process.exit(1);
+              }
+            }
+            
+            runUnifiedWorkflow();
+            EOF
+            node run_unified_workflow.js "$LATEST_CSV"
+          else
+            echo "⚠️ No CSV files found for analysis"
+          fi
+        else
+          echo "ℹ️ Skipping analysis - API keys not configured"
+        fi
+      continue-on-error: true
+      
+    - name: Upload Analysis Artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: slack-analysis-${{ github.run_number }}-${{ github.run_id }}
+        path: |
+          exports/*.csv
+          exports/*.md
+          exports/*.json
+        retention-days: 90
+        if-no-files-found: warn
+        
+    - name: Create Analysis Summary
+      if: always()
+      run: |
+        echo "## 📊 Weekly Slack Analysis Report" > analysis-summary.md
+        echo "" >> analysis-summary.md
+        echo "**Run Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> analysis-summary.md
+        echo "**Workflow:** ${{ github.workflow }}" >> analysis-summary.md
+        echo "**Run ID:** ${{ github.run_id }}" >> analysis-summary.md
+        echo "" >> analysis-summary.md
+        
+        if [ -f "exports/analysis-summary.json" ]; then
+          echo "### Analysis Results" >> analysis-summary.md
+          echo "" >> analysis-summary.md
+          echo "- **Messages Analyzed:** $(jq -r '.totalMessages' exports/analysis-summary.json)" >> analysis-summary.md
+          echo "- **Tokens Used:** $(jq -r '.tokensUsed' exports/analysis-summary.json)" >> analysis-summary.md
+          echo "- **Presentation URL:** $(jq -r '.presentationUrl' exports/analysis-summary.json)" >> analysis-summary.md
+          echo "- **Report File:** $(jq -r '.markdownFile' exports/analysis-summary.json)" >> analysis-summary.md
+        fi
+        
+        echo "" >> analysis-summary.md
+        echo "### Artifacts" >> analysis-summary.md
+        echo "" >> analysis-summary.md
+        echo "Download the complete analysis from the **Artifacts** section above." >> analysis-summary.md
+        echo "" >> analysis-summary.md
+        echo "---" >> analysis-summary.md
+        echo "*Generated by GitHub Actions*" >> analysis-summary.md
+        
+    - name: Upload Summary
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: analysis-summary-${{ github.run_number }}
+        path: analysis-summary.md
+        retention-days: 30
+        
+    - name: Comment on PR (if applicable)
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          
+          try {
+            let comment = '## 📊 Slack Analysis Results\n\n';
+            
+            if (fs.existsSync('./exports/analysis-summary.json')) {
+              const summary = JSON.parse(fs.readFileSync('./exports/analysis-summary.json', 'utf8'));
+              comment += `✅ **Unified Analysis Complete**\n`;
+              comment += `- Messages: ${summary.totalMessages}\n`;
+              comment += `- Tokens: ${summary.tokensUsed}\n`;
+              comment += `- Presentation: ${summary.presentationUrl}\n`;
+            }
+            
+            if (fs.existsSync('./exports')) {
+              const files = fs.readdirSync('./exports');
+              const csvFiles = files.filter(f => f.endsWith('.csv'));
+              const mdFiles = files.filter(f => f.endsWith('.md'));
+              
+              if (csvFiles.length > 0) {
+                comment += `\n📊 **CSV Files:** ${csvFiles.length}\n`;
+                csvFiles.forEach(file => {
+                  const stats = fs.statSync(path.join('./exports', file));
+                  comment += `- \`${file}\` (${(stats.size / 1024).toFixed(1)} KB)\n`;
+                });
+              }
+              
+              if (mdFiles.length > 0) {
+                comment += `\n📝 **Analysis Reports:** ${mdFiles.length}\n`;
+                mdFiles.forEach(file => {
+                  comment += `- \`${file}\`\n`;
+                });
+              }
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+          } catch (error) {
+            console.log('Could not create PR comment:', error.message);
+          }
+

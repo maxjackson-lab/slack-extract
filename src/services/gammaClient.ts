@@ -39,7 +39,12 @@ export class GammaClient {
             textMode: 'preserve', // CRITICAL: Preserves markdown structure and links
             numCards: 10, // Updated to 10 slides as requested
             cardSplit: 'auto',
-            additionalInstructions: `Title: ${title}. Description: ${description}. Use professional Unsplash photos or clean vector graphics for visual elements. Avoid AI-generated images. Focus on high-quality, relevant stock photography from Unsplash. Preserve all markdown links exactly as provided. Create a clean, professional presentation with real photos.`,
+            additionalInstructions: `Title: ${title}. Description: ${description}. CRITICAL INSTRUCTIONS: 
+1. Preserve all text exactly as provided - do not rewrite, rephrase, or regenerate any content
+2. Keep all markdown links in [text](url) format without modification
+3. Maintain all data points, numbers, and statistics exactly as written
+4. Do not use AI-generated images - text content only
+5. Render the analysis verbatim without interpretation or summarization`,
             textOptions: {
               amount: 'detailed', // Changed to detailed for more comprehensive content
               tone: 'professional, engaging, data-driven',

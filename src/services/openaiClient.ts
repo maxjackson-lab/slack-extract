@@ -27,10 +27,17 @@ export class OpenAIClient {
       const chunkData = this.formatChunkForAnalysis(chunk);
       
       // Create user prompt with chunk data
-      if (!this.config.userPromptTemplate) {
-        throw new Error('userPromptTemplate is not defined in config');
+      let userPrompt;
+      if (chunk.content && chunk.content.includes('Gambassadors Community Analysis')) {
+        // Use the custom prompt from UnifiedAnalyzer
+        userPrompt = chunk.content;
+      } else {
+        // Use the config template for regular chunked analysis
+        if (!this.config.userPromptTemplate) {
+          throw new Error('userPromptTemplate is not defined in config');
+        }
+        userPrompt = this.config.userPromptTemplate.replace('{{PASTE_SLACK_DATA_HERE}}', chunkData);
       }
-      const userPrompt = this.config.userPromptTemplate.replace('{{PASTE_SLACK_DATA_HERE}}', chunkData);
       
       // Debug: Log the first 1000 characters of the user prompt to see what's being sent
       logger.info(`User prompt preview (first 1000 chars):`, {
