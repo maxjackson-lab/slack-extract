@@ -44,6 +44,20 @@ export class OpenAIClient {
         promptPreview: userPrompt.substring(0, 1000) + '...',
         chunkDataPreview: chunkData.substring(0, 500) + '...'
       });
+      
+      // Verify real data is being sent (not placeholders)
+      const sampleUrls = userPrompt.match(/https:\/\/gambassadors\.slack\.com[^\s\)]+/g);
+      const sampleUsers = userPrompt.match(/\*\*User:\*\* ([^\n]+)/g);
+      const hasPlaceholders = userPrompt.includes('[link1]') || userPrompt.includes('[link2]') || userPrompt.includes('"Member"');
+      
+      logger.info('Data verification:', {
+        foundSlackUrls: sampleUrls ? sampleUrls.length : 0,
+        sampleUrls: sampleUrls?.slice(0, 3),
+        foundUsers: sampleUsers ? sampleUsers.length : 0,
+        sampleUsers: sampleUsers?.slice(0, 3),
+        hasPlaceholders: hasPlaceholders,
+        warning: hasPlaceholders ? '⚠️ PLACEHOLDERS DETECTED IN PROMPT' : '✅ No placeholders detected'
+      });
 
       // Make API call to GPT-5
       const response = await this.client.chat.completions.create({

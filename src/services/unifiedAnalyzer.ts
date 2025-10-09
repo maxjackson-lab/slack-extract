@@ -85,70 +85,401 @@ export class UnifiedAnalyzer {
    */
   private async loadCsvData(csvFilePath: string): Promise<any[]> {
     const fs = require('fs');
-    const csvData = fs.readFileSync(csvFilePath, 'utf8');
+    const csv = require('csv-parser');
+    const messages: any[] = [];
     
-    const lines = csvData.split('\n');
-    const headers = lines[0].split(',');
-    const messages = [];
-
-    for (let i = 1; i < lines.length; i++) {
-      if (lines[i].trim()) {
-        const values = lines[i].split(',');
-        if (values.length >= headers.length) {
-        const message: any = {};
-        headers.forEach((header: string, index: number) => {
-          message[header] = values[index] || '';
+    return new Promise((resolve, reject) => {
+      fs.createReadStream(csvFilePath)
+        .pipe(csv())
+        .on('data', (row: any) => {
+          messages.push(row);
+        })
+        .on('end', () => {
+          logger.info('CSV data loaded via csv-parser', {
+            totalMessages: messages.length,
+            sampleFields: Object.keys(messages[0] || {})
+          });
+          resolve(messages);
+        })
+        .on('error', (error: Error) => {
+          logger.logError(error, { operation: 'loadCsvData' });
+          reject(error);
         });
-          messages.push(message);
+    });
+  }
+
+  /**
+   * Calculate detailed channel statistics
+   */
+  private calculateChannelStats(messages: any[]): {
+    channelBreakdown: Array<{
+      name: string;
+      messageCount: number;
+      percentage: number;
+      activeUsers: number;
+      threadCount: number;
+      reactionCount: number;
+    }>;
+    totalChannels: number;
+  } {
+    const channelMap = new Map<string, any>();
+    
+    messages.forEach(msg => {
+      const channel = msg.Channel;
+      if (!channelMap.has(channel)) {
+        channelMap.set(channel, {
+          name: channel,
+          messageCount: 0,
+          users: new Set<string>(),
+          threadCount: 0,
+          reactionCount: 0,
+          messages: []
+        });
+      }
+      
+      const stats = channelMap.get(channel);
+      stats.messageCount++;
+      stats.users.add(msg.User);
+      stats.reactionCount += parseInt(msg.Total_Reactions || '0', 10);
+      if (msg.Is_Thread_Reply === 'Yes') {
+        stats.threadCount++;
+      }
+      stats.messages.push(msg);
+    });
+    
+    const totalMessages = messages.length;
+    const channelBreakdown = Array.from(channelMap.values())
+      .map(stats => ({
+        name: stats.name,
+        messageCount: stats.messageCount,
+        percentage: Math.round((stats.messageCount / totalMessages) * 100),
+        activeUsers: stats.users.size,
+        threadCount: stats.threadCount,
+        reactionCount: stats.reactionCount
+      }))
+      .sort((a, b) => b.messageCount - a.messageCount);
+    
+    return {
+      channelBreakdown,
+      totalChannels: channelMap.size
+    };
+  }
+
+  /**
+   * Calculate topic distribution by analyzing message content
+   */
+  private calculateTopicDistribution(messages: any[]): {
+    topics: Array<{
+      name: string;
+      keywords: string[];
+      messageCount: number;
+      percentage: number;
+      channels: string[];
+    }>;
+  } {
+    const topicPatterns = {
+      'API Integration': ['api', 'integration', 'endpoint', 'webhook', 'authenticate'],
+      'Feature Requests': ['feature', 'request', 'wish', 'would like', 'should add', 'need'],
+      'Bug Reports': ['bug', 'error', 'issue', 'not working', 'broken', 'problem'],
+      'Template/Themes': ['template', 'theme', 'design', 'style', 'customize', 'branding'],
+      'Images': ['image', 'photo', 'picture', 'upload', 'unsplash', 'visual'],
+      'Pricing/Credits': ['pricing', 'credit', 'plan', 'subscription', 'cost', 'paid'],
+      'General Discussion': [] // catch-all
+    };
+    
+    const topicStats = new Map<string, {
+      count: number;
+      channels: Set<string>;
+    }>();
+    
+    // Initialize topics
+    Object.keys(topicPatterns).forEach(topic => {
+      topicStats.set(topic, { count: 0, channels: new Set() });
+    });
+    
+    // Categorize messages
+    messages.forEach(msg => {
+      const content = (msg.Message || '').toLowerCase();
+      let categorized = false;
+      
+      for (const [topic, keywords] of Object.entries(topicPatterns)) {
+        if (keywords.length === 0) continue; // Skip general discussion for now
+        
+        if (keywords.some(keyword => content.includes(keyword))) {
+          const stats = topicStats.get(topic)!;
+          stats.count++;
+          stats.channels.add(msg.Channel);
+          categorized = true;
+          break; // Assign to first matching topic only
         }
       }
-    }
+      
+      // If not categorized, it's general discussion
+      if (!categorized) {
+        const stats = topicStats.get('General Discussion')!;
+        stats.count++;
+        stats.channels.add(msg.Channel);
+      }
+    });
+    
+    const totalMessages = messages.length;
+    const topics = Array.from(topicStats.entries())
+      .map(([name, stats]) => ({
+        name,
+        keywords: topicPatterns[name as keyof typeof topicPatterns] || [],
+        messageCount: stats.count,
+        percentage: Math.round((stats.count / totalMessages) * 100),
+        channels: Array.from(stats.channels)
+      }))
+      .filter(t => t.messageCount > 0)
+      .sort((a, b) => b.messageCount - a.messageCount);
+    
+    return { topics };
+  }
 
-    return messages;
+  /**
+   * Calculate engagement metrics
+   */
+  private calculateEngagementMetrics(messages: any[]): {
+    totalReactions: number;
+    messagesWithReactions: number;
+    reactionPercentage: number;
+    topLevelMessages: number;
+    threadReplies: number;
+    threadPercentage: number;
+    averageReactionsPerMessage: number;
+    mostReactedMessage: any | null;
+  } {
+    let totalReactions = 0;
+    let messagesWithReactions = 0;
+    let topLevelMessages = 0;
+    let threadReplies = 0;
+    let mostReactedMessage: any = null;
+    let maxReactions = 0;
+    
+    messages.forEach(msg => {
+      const reactions = parseInt(msg.Total_Reactions || '0', 10);
+      totalReactions += reactions;
+      
+      if (reactions > 0) {
+        messagesWithReactions++;
+      }
+      
+      if (reactions > maxReactions) {
+        maxReactions = reactions;
+        mostReactedMessage = msg;
+      }
+      
+      if (msg.Is_Thread_Reply === 'Yes') {
+        threadReplies++;
+      } else {
+        topLevelMessages++;
+      }
+    });
+    
+    const totalMessages = messages.length;
+    
+    return {
+      totalReactions,
+      messagesWithReactions,
+      reactionPercentage: Math.round((messagesWithReactions / totalMessages) * 100),
+      topLevelMessages,
+      threadReplies,
+      threadPercentage: Math.round((threadReplies / totalMessages) * 100),
+      averageReactionsPerMessage: totalMessages > 0 ? 
+        parseFloat((totalReactions / totalMessages).toFixed(2)) : 0,
+      mostReactedMessage
+    };
+  }
+
+  /**
+   * Calculate user participation metrics
+   */
+  private calculateUserMetrics(messages: any[]): {
+    totalUsers: number;
+    messagesPerUser: number;
+    topUsers: Array<{
+      name: string;
+      messageCount: number;
+      percentage: number;
+      channels: string[];
+    }>;
+  } {
+    const userMap = new Map<string, {
+      messageCount: number;
+      channels: Set<string>;
+    }>();
+    
+    messages.forEach(msg => {
+      const user = msg.User;
+      if (!userMap.has(user)) {
+        userMap.set(user, {
+          messageCount: 0,
+          channels: new Set()
+        });
+      }
+      
+      const stats = userMap.get(user)!;
+      stats.messageCount++;
+      stats.channels.add(msg.Channel);
+    });
+    
+    const totalMessages = messages.length;
+    const totalUsers = userMap.size;
+    const messagesPerUser = totalUsers > 0 ? 
+      parseFloat((totalMessages / totalUsers).toFixed(1)) : 0;
+    
+    const topUsers = Array.from(userMap.entries())
+      .map(([name, stats]) => ({
+        name,
+        messageCount: stats.messageCount,
+        percentage: Math.round((stats.messageCount / totalMessages) * 100),
+        channels: Array.from(stats.channels)
+      }))
+      .sort((a, b) => b.messageCount - a.messageCount)
+      .slice(0, 5); // Top 5 users
+    
+    return {
+      totalUsers,
+      messagesPerUser,
+      topUsers
+    };
+  }
+
+  /**
+   * Calculate Gamma team response metrics
+   */
+  private calculateGammaResponseMetrics(
+    communityMessages: any[], 
+    gammaMessages: any[]
+  ): {
+    totalCommunityQuestions: number;
+    questionsWithGammaResponse: number;
+    responseRate: number;
+    averageResponseTimeHours: number | null;
+  } {
+    // Simple heuristic: messages with '?' are questions
+    const questions = communityMessages.filter(msg => 
+      (msg.Message || '').includes('?')
+    );
+    
+    let questionsWithResponse = 0;
+    let totalResponseTime = 0;
+    let responseCount = 0;
+    
+    questions.forEach(question => {
+      const questionTime = new Date(question.Timestamp).getTime();
+      const channel = question.Channel;
+      
+      // Look for Gamma response in same channel after question time
+      const response = gammaMessages.find(gamma => 
+        gamma.Channel === channel &&
+        new Date(gamma.Timestamp).getTime() > questionTime
+      );
+      
+      if (response) {
+        questionsWithResponse++;
+        const responseTime = new Date(response.Timestamp).getTime();
+        const hours = (responseTime - questionTime) / (1000 * 60 * 60);
+        totalResponseTime += hours;
+        responseCount++;
+      }
+    });
+    
+    return {
+      totalCommunityQuestions: questions.length,
+      questionsWithGammaResponse: questionsWithResponse,
+      responseRate: questions.length > 0 ? 
+        Math.round((questionsWithResponse / questions.length) * 100) : 0,
+      averageResponseTimeHours: responseCount > 0 ?
+        parseFloat((totalResponseTime / responseCount).toFixed(1)) : null
+    };
+  }
+
+  /**
+   * Get date range from messages
+   */
+  private getDateRange(messages: any[]): string {
+    if (messages.length === 0) return 'No data';
+    
+    const timestamps = messages.map(m => new Date(m.Timestamp).getTime());
+    const earliest = new Date(Math.min(...timestamps));
+    const latest = new Date(Math.max(...timestamps));
+    
+    return `${earliest.toLocaleDateString()} to ${latest.toLocaleDateString()}`;
   }
 
   /**
    * Prepare unified dataset with cross-cutting analysis
    */
   private prepareUnifiedDataset(messages: any[]): string {
-    // NEW: Filter messages by Gamma employees vs community
+    // Filter Gamma employees
     const isGammaEmployee = (user: string) => {
-      return user.includes('(Gamma') || user.includes('( Gamma');
+      return user.includes('(Gamma') || 
+             user.includes('( Gamma') || 
+             user === 'Deeni Fatiha';
     };
     
     const communityMessages = messages.filter(m => !isGammaEmployee(m.User));
     const gammaEmployeeMessages = messages.filter(m => isGammaEmployee(m.User));
     
-    // Continue with analysis using communityMessages only
-    const channelActivity = this.analyzeChannelActivity(communityMessages);
-    const userEngagement = this.analyzeUserEngagement(communityMessages);
-    const temporalPatterns = this.analyzeTemporalPatterns(communityMessages);
-    const contentThemes = this.analyzeContentThemes(communityMessages);
-    const interactionPatterns = this.analyzeInteractionPatterns(communityMessages);
-
+    // Calculate all statistics
+    const communityChannelStats = this.calculateChannelStats(communityMessages);
+    const topicDistribution = this.calculateTopicDistribution(communityMessages);
+    const engagementMetrics = this.calculateEngagementMetrics(communityMessages);
+    const userMetrics = this.calculateUserMetrics(communityMessages);
+    const gammaChannelStats = this.calculateChannelStats(gammaEmployeeMessages);
+    const responseMetrics = this.calculateGammaResponseMetrics(
+      communityMessages, 
+      gammaEmployeeMessages
+    );
+    
     return `# Community Dataset (Excluding Gamma Employees)
 
-## Dataset Overview
+## PRE-CALCULATED STATISTICS - USE THESE EXACT NUMBERS
+
+### Message Overview
 - **Total Community Messages**: ${communityMessages.length}
 - **Total Gamma Employee Messages**: ${gammaEmployeeMessages.length}
+- **Total Workspace Messages**: ${messages.length}
+- **Community %**: ${Math.round((communityMessages.length / messages.length) * 100)}%
 - **Time Period**: ${this.getDateRange(messages)}
-- **Active Channels**: ${channelActivity.channels.length}
-- **Active Community Users**: ${userEngagement.users.length}
 
-## Channel Activity Patterns
-${channelActivity.summary}
+### Channel Breakdown (Community)
+${communityChannelStats.channelBreakdown.map(ch => 
+  `- **${ch.name}**: ${ch.messageCount} msgs (${ch.percentage}%), ${ch.activeUsers} users, ${ch.threadCount} thread replies, ${ch.reactionCount} reactions`
+).join('\n')}
 
-## User Engagement Analysis
-${userEngagement.summary}
+### Topic Distribution (Community)
+${topicDistribution.topics.map(topic =>
+  `- **${topic.name}**: ${topic.messageCount} msgs (${topic.percentage}%) across channels: ${topic.channels.join(', ')}`
+).join('\n')}
 
-## Temporal Patterns
-${temporalPatterns.summary}
+### Engagement Metrics (Community)
+- **Total Reactions**: ${engagementMetrics.totalReactions}
+- **Messages with Reactions**: ${engagementMetrics.messagesWithReactions} (${engagementMetrics.reactionPercentage}%)
+- **Average Reactions/Message**: ${engagementMetrics.averageReactionsPerMessage}
+- **Top-level Messages**: ${engagementMetrics.topLevelMessages} (${Math.round((engagementMetrics.topLevelMessages / communityMessages.length) * 100)}%)
+- **Thread Replies**: ${engagementMetrics.threadReplies} (${engagementMetrics.threadPercentage}%)
+${engagementMetrics.mostReactedMessage ? `- **Most Reacted**: [${engagementMetrics.mostReactedMessage.User}](${engagementMetrics.mostReactedMessage.Slack_URL}) with ${engagementMetrics.mostReactedMessage.Total_Reactions} reactions` : ''}
 
-## Content Theme Analysis
-${contentThemes.summary}
+### User Participation (Community)
+- **Total Users**: ${userMetrics.totalUsers}
+- **Messages per User (avg)**: ${userMetrics.messagesPerUser}
+- **Top Contributors**:
+${userMetrics.topUsers.map(user =>
+  `  - ${user.name}: ${user.messageCount} msgs (${user.percentage}%) in ${user.channels.length} channels`
+).join('\n')}
 
-## Interaction Patterns
-${interactionPatterns.summary}
+### Gamma Team Response Metrics
+- **Community Questions**: ${responseMetrics.totalCommunityQuestions}
+- **Questions Answered by Gamma**: ${responseMetrics.questionsWithGammaResponse} (${responseMetrics.responseRate}% response rate)
+${responseMetrics.averageResponseTimeHours !== null ? `- **Average Response Time**: ${responseMetrics.averageResponseTimeHours} hours` : ''}
+
+### Gamma Team Channel Activity
+${gammaChannelStats.channelBreakdown.map(ch =>
+  `- **${ch.name}**: ${ch.messageCount} msgs (${ch.percentage}% of Gamma activity)`
+).join('\n')}
 
 ## Raw Community Message Data for Deep Analysis
 ${communityMessages.map((msg, index) => `
@@ -183,81 +514,115 @@ ${gammaEmployeeMessages.map((msg, index) => `
 
     const userPrompt = `# Gambassadors Community Analysis
 
-Analyze this Slack community data. CRITICAL: Community messages EXCLUDE Gamma employees - they are analyzed separately.
+CRITICAL REQUIREMENTS:
+1. Use ONLY the ACTUAL Slack_URL values from the data
+2. Use REAL usernames from the User field
+3. Use GPT-4o (not GPT-5)
+4. Use \\n---\\n to separate slides for Gamma
+
+**STATISTICAL RIGOR - CRITICAL:**
+5. USE THE PRE-CALCULATED STATISTICS provided above - DO NOT recalculate percentages
+6. Reference the exact numbers from "PRE-CALCULATED STATISTICS" section
+7. Add context by combining statistics with real examples
+8. Every major claim should reference a statistic: "X messages (Y%)"
 
 **Data:** ${unifiedDataset}
 
-**TREND DETECTION RULES:**
-- A TREND requires 2+ different users mentioning the same/similar idea
-- ONE user mentioning something = HIGHLIGHT, not a trend
-- Count unique users for each pattern before calling it a trend
-- Label trends with user count: "Mentioned by X users"
+**EXAMPLES OF USING PRE-CALCULATED STATS:**
 
-Extract: trends (2+ users), highlights (1 user), feature requests, success stories, recurring questions.
+✅ CORRECT: "API Integration dominated discussions with 23 messages (34% of community activity), primarily in generate-api-discussion channel where it represented 18 of 37 messages (49%)"
+❌ WRONG: "API was discussed a lot" (no stats)
 
-Output markdown only. No JSON. Start with # heading.
+✅ CORRECT: "The community showed strong engagement with 45% of messages receiving reactions and an average of 1.8 reactions per message"  
+❌ WRONG: "Good engagement" (no numbers)
+
+Output structure with statistics integrated throughout...
 
 ---
 
 # Gambassadors Community Insights
-Week of [Date] Snapshot
+Week of [Use date range from stats]
 
-## Community Overview (Excluding Gamma Employees)
-[2-3 sentences: vibe, energy, themes from community members ONLY]
+---
 
-**Activity:** [X] community messages, [Y] community members, top topics: [3-4 themes]
+## Community Snapshot 📊
 
-## What's Trending 🔥 (Multi-user Patterns)
+**Activity Overview:**
+- **[X] community messages** from **[Y] active members** ([Z] messages per user average)
+- Represents **[A]% of total workspace activity** ([X] community + [B] Gamma team messages)
+- Active across **[C] channels** with **[D]% of messages** in top 3 channels
 
-**Popular Features** (2+ users each)
-- Feature: Why it works - Mentioned by X users [link1] [link2]
-- Another: Feedback - Mentioned by X users [link]
-[Only include if 2+ different users mentioned it]
+**Engagement Health:**
+- **[E]% of messages** received reactions ([F] total reactions)
+- **[G]% were thread replies** showing active discussions
+- Gamma team **responded to [H]% of questions** with **[I] hour average response time**
 
-**Recurring Requests** (2+ users each)
-- [Request](link): Use case - Mentioned by X users [link1] [link2]
-[Only include if 2+ different users requested it]
+---
 
-## Notable Highlights 💡 (One-off Feedback)
+## Channel Activity 📍
 
-**Interesting Use Cases**
-- [Use case](link): What they built (single mention)
-- Another unique idea: Description (single mention)
-[One-off interesting feedback, clearly labeled as single mentions]
+**Top Channels by Volume:**
 
-**Feature Wishlist** (Single requests)
-- [Request](link): Why they need it (single mention)
+**1. [Channel Name]** ([X] msgs, [Y]% of total)
+- [Z] active users ([A]% of community)  
+- [B] thread replies ([C]% threading rate)
+- Primary topics: [Use topic distribution for this channel]
+- Key discussion: [Real example with link]
 
-## What's Challenging 😓
+**2. [Channel Name]** ([X] msgs, [Y]% of total)
+[Same format]
 
-**Recurring Questions** (2+ users)
-- Topic: Pattern - Asked by X users [link1] [link2]
-[Only patterns with 2+ users]
+---
 
-**Friction Points**
-- Issue: Impact
-- [Challenge](link): Where stuck
+## Topic Deep Dive 🔍
 
-## Notable Feedback
+**What the Community Discussed:**
 
-> "Quote" - Member, [link](url)
-> "Quote" - Member, [link](url)
-[4-6 quotes, mix positive/constructive]
+**API Integration** ([X] msgs, [Y]% of activity)
+- Mentioned across [Z] channels, primarily [Channel name]
+- Trending pattern: [Describe with real examples and links]
+- User quotes: [Real examples]
+
+**Feature Requests** ([X] msgs, [Y]% of activity)
+- [Same format]
+
+**Bug Reports** ([X] msgs, [Y]% of activity)
+- [Same format]
+
+---
+
+## Trending Patterns 🔥 (2+ users each)
+
+[Use pre-calculated stats to validate trends are significant]
+
+**Popular Features** (backed by topic data showing [X]% in this category)
+- [Feature with percentage and channel context]
+
+---
+
+## Notable Highlights 💡
+
+[One-off items that don't show up in percentages but are interesting]
+
+---
 
 ## Gamma Team Engagement 👥
 
-**Team Activity Summary**
-- Total Gamma messages: [X]
-- Most active: [names]
-- Key interactions: [what they focused on]
+**Response Coverage:**
+- Team sent **[X] messages** ([Y]% of workspace activity)
+- Active in **[Z] channels** with focus on [Top channel] ([A]% of team messages)
+- Responded to **[B]% of community questions** averaging **[C] hour response time**
 
-**Gamma Team Contributions**
-- Support provided: [examples with links]
-- Feature discussions: [what they engaged with]
-- Community building: [how they participated]
+**Channel Presence:**
+[Use pre-calculated Gamma channel stats]
+
+**Most Active Team Members:**
+[Use user metrics for Gamma employees]
 
 ---
-*Based on [X] community messages + [Y] Gamma employee messages from [date range]*`;
+
+*Based on [X] community messages + [Y] Gamma messages = [Z] total workspace messages from [date range]*  
+*Analysis generated using GPT-4o on ${new Date().toLocaleDateString()}*`;
 
     // Create a mock chunk for the unified analysis with the custom prompt
     const mockChunk = {
@@ -279,147 +644,7 @@ Week of [Date] Snapshot
     };
   }
 
-  /**
-   * Analyze channel activity patterns
-   */
-  private analyzeChannelActivity(messages: any[]): any {
-    const channelStats: any = {};
-    messages.forEach(msg => {
-      if (!channelStats[msg.Channel]) {
-        channelStats[msg.Channel] = { count: 0, users: new Set(), reactions: 0 };
-      }
-      channelStats[msg.Channel].count++;
-      channelStats[msg.Channel].users.add(msg.User);
-      channelStats[msg.Channel].reactions += parseInt(msg.Total_Reactions || 0);
-    });
 
-    const channels = Object.entries(channelStats)
-      .map(([name, stats]: [string, any]) => ({
-        name,
-        messageCount: stats.count,
-        uniqueUsers: stats.users.size,
-        totalReactions: stats.reactions,
-        engagement: stats.reactions / stats.count
-      }))
-      .sort((a, b) => b.messageCount - a.messageCount);
-
-    return {
-      channels,
-      summary: `Top channels by activity: ${channels.slice(0, 3).map(c => `${c.name} (${c.messageCount} msgs)`).join(', ')}`
-    };
-  }
-
-  /**
-   * Analyze user engagement patterns
-   */
-  private analyzeUserEngagement(messages: any[]): any {
-    const userStats: any = {};
-    messages.forEach(msg => {
-      if (!userStats[msg.User]) {
-        userStats[msg.User] = { messages: 0, channels: new Set(), reactions: 0 };
-      }
-      userStats[msg.User].messages++;
-      userStats[msg.User].channels.add(msg.Channel);
-      userStats[msg.User].reactions += parseInt(msg.Total_Reactions || 0);
-    });
-
-    const users = Object.entries(userStats)
-      .map(([name, stats]: [string, any]) => ({
-        name,
-        messageCount: stats.messages,
-        channelDiversity: stats.channels.size,
-        totalReactions: stats.reactions,
-        influence: stats.reactions / stats.messages
-      }))
-      .sort((a, b) => b.messageCount - a.messageCount);
-
-    return {
-      users,
-      summary: `Most active users: ${users.slice(0, 3).map(u => `${u.name} (${u.messageCount} msgs)`).join(', ')}`
-    };
-  }
-
-  /**
-   * Analyze temporal patterns
-   */
-  private analyzeTemporalPatterns(messages: any[]): any {
-    const hourlyActivity: any = {};
-    const dailyActivity: any = {};
-    
-    messages.forEach(msg => {
-      const date = new Date(msg.Timestamp);
-      const hour = date.getHours();
-      const day = date.toDateString();
-      
-      hourlyActivity[hour] = (hourlyActivity[hour] || 0) + 1;
-      dailyActivity[day] = (dailyActivity[day] || 0) + 1;
-    });
-
-    const peakHour = Object.entries(hourlyActivity).sort(([,a], [,b]) => (b as number) - (a as number))[0];
-    const peakDay = Object.entries(dailyActivity).sort(([,a], [,b]) => (b as number) - (a as number))[0];
-
-    return {
-      summary: `Peak activity: ${peakHour[0]}:00 (${peakHour[1]} msgs), Peak day: ${peakDay[0]} (${peakDay[1]} msgs)`
-    };
-  }
-
-  /**
-   * Analyze content themes
-   */
-  private analyzeContentThemes(messages: any[]): any {
-    const themes = {
-      featureRequests: 0,
-      bugReports: 0,
-      questions: 0,
-      announcements: 0,
-      discussions: 0
-    };
-
-    messages.forEach(msg => {
-      const content = msg.Message.toLowerCase();
-      if (content.includes('feature') || content.includes('build next') || content.includes('should gamma')) {
-        themes.featureRequests++;
-      } else if (content.includes('bug') || content.includes('issue') || content.includes('problem') || msg.Channel === 'bugs') {
-        themes.bugReports++;
-      } else if (content.includes('?') || msg.Channel === 'questions') {
-        themes.questions++;
-      } else if (content.includes('announcement') || msg.Channel === 'gamma-announcements') {
-        themes.announcements++;
-      } else {
-        themes.discussions++;
-      }
-    });
-
-    const topTheme = Object.entries(themes).sort(([,a], [,b]) => b - a)[0];
-
-    return {
-      themes,
-      summary: `Top content theme: ${topTheme[0]} (${topTheme[1]} messages)`
-    };
-  }
-
-  /**
-   * Analyze interaction patterns
-   */
-  private analyzeInteractionPatterns(messages: any[]): any {
-    const threadReplies = messages.filter(m => m.Is_Thread_Reply === 'Yes').length;
-    const topLevelMessages = messages.length - threadReplies;
-    const totalReactions = messages.reduce((sum, m) => sum + parseInt(m.Total_Reactions || 0), 0);
-
-    return {
-      summary: `Interaction patterns: ${threadReplies} thread replies, ${topLevelMessages} top-level messages, ${totalReactions} total reactions`
-    };
-  }
-
-  /**
-   * Get date range from messages
-   */
-  private getDateRange(messages: any[]): string {
-    const dates = messages.map(m => new Date(m.Timestamp)).sort();
-    const start = dates[0].toDateString();
-    const end = dates[dates.length - 1].toDateString();
-    return `${start} to ${end}`;
-  }
 
   /**
    * Extract message count from dataset

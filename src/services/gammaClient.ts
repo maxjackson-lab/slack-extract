@@ -39,16 +39,21 @@ export class GammaClient {
             textMode: 'preserve', // CRITICAL: Preserves markdown structure and links
             numCards: 10, // Updated to 10 slides as requested
             cardSplit: 'auto',
-            additionalInstructions: `Title: ${title}. Description: ${description}. CRITICAL INSTRUCTIONS: 
-1. Preserve all text exactly as provided - do not rewrite, rephrase, or regenerate any content
-2. Keep all markdown links in [text](url) format without modification
-3. Maintain all data points, numbers, and statistics exactly as written
-4. Do not use AI-generated images - text content only
-5. Render the analysis verbatim without interpretation or summarization`,
+            additionalInstructions: `Title: ${title}. Description: ${description}. 
+CRITICAL - DO NOT MODIFY THE CONTENT:
+1. DO NOT replace any URLs with placeholders - preserve ALL https://gambassadors.slack.com URLs exactly
+2. DO NOT replace usernames with "Member" - keep all actual names exactly as written
+3. DO NOT replace dates with [Date] - keep all date text exactly as provided
+4. DO NOT replace [Username](URL) links with [link1] [link2] placeholders
+5. Render ALL markdown exactly as provided without any rewriting or interpretation
+6. This is FINAL content - do not summarize, rephrase, or regenerate anything`,
             textOptions: {
-              amount: 'detailed', // Changed to detailed for more comprehensive content
+              amount: 'detailed',
               tone: 'professional, engaging, data-driven',
               language: 'en'
+            },
+            imageOptions: {
+              source: 'unsplash' // Use Unsplash photos (Amanda's preference), not AI-generated images
             }
           };
 
