@@ -1,5 +1,5 @@
 const { WebClient } = require('@slack/web-api');
-const config = require('../config');
+const config = require('../config/index.js').default;
 const logger = require('../utils/logger');
 
 /**
