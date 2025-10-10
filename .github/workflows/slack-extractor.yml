@@ -36,12 +36,6 @@ jobs:
         LOG_LEVEL: info
       run: |
         echo "📊 Running Slack Extractor and Unified Analysis..."
-        # Debug environment variables
-        echo "🔍 Debug: Checking environment variables..."
-        echo "SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:0:10}..."
-        echo "SLACK_WORKSPACE_ID: $SLACK_WORKSPACE_ID"
-        echo "OPENAI_API_KEY: ${OPENAI_API_KEY:+SET}"
-        echo "GAMMA_API_KEY: ${GAMMA_API_KEY:+SET}"
         # First extract data
         echo "🔄 Step 1: Extracting Slack data..."
         node dist/index.js --once
