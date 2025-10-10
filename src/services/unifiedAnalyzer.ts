@@ -406,7 +406,17 @@ export class UnifiedAnalyzer {
     const earliest = new Date(Math.min(...timestamps));
     const latest = new Date(Math.max(...timestamps));
     
-    return `${earliest.toLocaleDateString()} to ${latest.toLocaleDateString()}`;
+    // Format dates consistently: "Oct 1, 2025" format in PST
+    const formatDate = (date: Date) => {
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric',
+        timeZone: 'America/Los_Angeles'
+      });
+    };
+    
+    return `${formatDate(earliest)} to ${formatDate(latest)}`;
   }
 
   /**
@@ -519,12 +529,14 @@ CRITICAL REQUIREMENTS:
 2. Use REAL usernames from the User field
 3. Use GPT-4o (not GPT-5)
 4. Use \\n---\\n to separate slides for Gamma
+5. Use the EXACT "Time Period" date range from PRE-CALCULATED STATISTICS above - do not calculate or modify dates
 
-**STATISTICAL RIGOR - CRITICAL:**
-5. USE THE PRE-CALCULATED STATISTICS provided above - DO NOT recalculate percentages
-6. Reference the exact numbers from "PRE-CALCULATED STATISTICS" section
-7. Add context by combining statistics with real examples
-8. Every major claim should reference a statistic: "X messages (Y%)"
+**BALANCE STATS WITH STORIES - CRITICAL:**
+6. USE THE PRE-CALCULATED STATISTICS to establish context and magnitude
+7. Lead with numbers, then dive deep into qualitative examples and user voices
+8. Stats show WHAT happened, quotes and examples show WHY it matters
+9. Don't let percentages drown out the human stories - use stats as anchors, not the whole analysis
+10. Trends require 2+ users AND meaningful theme, not just category grouping
 
 **Data:** ${unifiedDataset}
 
@@ -541,7 +553,7 @@ Output structure with statistics integrated throughout...
 ---
 
 # Gambassadors Community Insights
-Week of [Use date range from stats]
+Week of [Copy exact "Time Period" from PRE-CALCULATED STATISTICS above]
 
 ---
 
@@ -549,7 +561,7 @@ Week of [Use date range from stats]
 
 **Activity Overview:**
 - **[X] community messages** from **[Y] active members** ([Z] messages per user average)
-- Represents **[A]% of total workspace activity** ([X] community + [B] Gamma team messages)
+- **[X] total messages** analyzed from Gambassadors workspace this period
 - Active across **[C] channels** with **[D]% of messages** in top 3 channels
 
 **Engagement Health:**
@@ -564,7 +576,7 @@ Week of [Use date range from stats]
 **Top Channels by Volume:**
 
 **1. [Channel Name]** ([X] msgs, [Y]% of total)
-- [Z] active users ([A]% of community)  
+- [Z] active users engaged this week  
 - [B] thread replies ([C]% threading rate)
 - Primary topics: [Use topic distribution for this channel]
 - Key discussion: [Real example with link]
@@ -591,25 +603,50 @@ Week of [Use date range from stats]
 
 ---
 
-## Trending Patterns 🔥 (2+ users each)
+## Trending Patterns 🔥
 
-[Use pre-calculated stats to validate trends are significant]
+**IMPORTANT:** A trend requires 2+ different users discussing a similar theme. List 3-5 trends minimum.
 
-**Popular Features** (backed by topic data showing [X]% in this category)
-- [Feature with percentage and channel context]
+**For each trend:**
+- Lead with the theme and stats: "X users discussed [topic] across Y channels (Z messages)"
+- Quote 2-3 specific users with their actual messages and links
+- Explain why this matters to the community
+
+**Example format:**
+**Template Customization Requests** (3 users, 5 messages, 7% of API discussions)
+- Yazan: "I really need the client to upload his sample deck..." [link]
+- Alex: "Is there a way to upload exact design template..." [link]  
+- CEO Pro AI: "Would love to use existing templates via API" [link]
+*Why it matters: Community wants brand consistency, not generic templates*
 
 ---
 
 ## Notable Highlights 💡
 
-[One-off items that don't show up in percentages but are interesting]
+**IMPORTANT:** List 5-7 interesting one-off items that tell rich stories. These don't need 2+ users.
+
+**Look for:**
+- Creative use cases (real estate, medical, unique industries)
+- Highly-reacted messages (what resonated?)
+- Unexpected feedback or surprising insights
+- Technical deep-dives from power users
+- Community moments (gratitude, frustration, breakthroughs)
+
+**Format each highlight:**
+- Start with compelling hook
+- Include actual user quote with link
+- Add reaction count if high
+- Explain why it's noteworthy
+
+**Example:**
+"Ruby Y shared how Gamma saved her from burning midnight oil while on baby feeding duty - received 12 reactions, the week's most-engaged post. Shows Gamma's value for busy professionals managing work-life balance." [link]
 
 ---
 
 ## Gamma Team Engagement 👥
 
 **Response Coverage:**
-- Team sent **[X] messages** ([Y]% of workspace activity)
+- Team sent **[X] messages** ([Y]% of analyzed messages in monitored channels)
 - Active in **[Z] channels** with focus on [Top channel] ([A]% of team messages)
 - Responded to **[B]% of community questions** averaging **[C] hour response time**
 
@@ -621,7 +658,8 @@ Week of [Use date range from stats]
 
 ---
 
-*Based on [X] community messages + [Y] Gamma messages = [Z] total workspace messages from [date range]*  
+*Based on [X] community messages + [Y] Gamma messages = [Z] total workspace messages*  
+*Weekly message activity: [Copy exact "Time Period" from PRE-CALCULATED STATISTICS above]*  
 *Analysis generated using GPT-4o on ${new Date().toLocaleDateString()}*`;
 
     // Create a mock chunk for the unified analysis with the custom prompt
