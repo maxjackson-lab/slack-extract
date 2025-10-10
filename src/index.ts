@@ -4,7 +4,6 @@ import config from './config';
 const logger = require('./utils/logger');
 const slackService = require('./services/slackService');
 const csvService = require('./services/csvService');
-const dropboxService = require('./services/dropboxService');
 import { SlackAnalyzer } from './services/slackAnalyzer';
 import { AnalysisProgress } from './types/analysis';
 
@@ -75,14 +74,8 @@ class SlackExtractorApp {
       const localCsvResult = await csvService.createCsvFile(slackData, csvResult.filename);
       logger.info('CSV saved locally', { path: localCsvResult.filePath });
 
-      // Step 4: Upload to Dropbox
-      logger.logLifecycle('Step 3: Uploading to Dropbox');
-      const uploadResult = await dropboxService.uploadCsvFile(
-        csvResult.buffer, 
-        csvResult.filename
-      );
 
-      // Step 5: Log results
+      // Step 4: Log results
       const duration = Date.now() - startTime;
       const stats = csvService.getCsvStats(slackData);
       
@@ -90,13 +83,11 @@ class SlackExtractorApp {
         duration: `${duration}ms`,
         recordsProcessed: slackData.length,
         csvFilename: csvResult.filename,
-        dropboxFileId: uploadResult.fileId,
-        dropboxLink: uploadResult.webViewLink,
         statistics: stats
       });
 
       // Log summary
-      this.logSummary(stats, uploadResult);
+      this.logSummary(stats);
 
     } catch (error) {
       const duration = Date.now() - startTime;
@@ -278,19 +269,13 @@ class SlackExtractorApp {
       throw new Error('Failed to connect to Slack API');
     }
 
-    // Test Dropbox connection
-    const dropboxConnected = await dropboxService.testConnection();
-    if (!dropboxConnected) {
-      throw new Error('Failed to connect to Dropbox API');
-    }
-
-    logger.logLifecycle('All API connections successful');
+    logger.logLifecycle('Slack API connection successful');
   }
 
   /**
    * Log process summary
    */
-  private logSummary(stats: any, uploadResult: any): void {
+  private logSummary(stats: any): void {
     console.log('\n' + '='.repeat(60));
     console.log('SLACK DATA EXTRACTION COMPLETED SUCCESSFULLY');
     console.log('='.repeat(60));
@@ -303,9 +288,7 @@ class SlackExtractorApp {
     console.log(`📄 Messages with Files: ${stats.messagesWithFiles}`);
     console.log(`📅 Date Range: ${stats.dateRange.earliest} to ${stats.dateRange.latest}`);
     console.log('');
-    console.log('📁 Dropbox File:');
-    console.log(`   File ID: ${uploadResult.fileId}`);
-    console.log(`   Link: ${uploadResult.webViewLink}`);
+    console.log('📁 CSV File saved locally in exports/ folder');
     console.log('='.repeat(60) + '\n');
   }
 

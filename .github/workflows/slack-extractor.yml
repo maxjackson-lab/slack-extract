@@ -36,8 +36,19 @@ jobs:
         LOG_LEVEL: info
       run: |
         echo "📊 Running Slack Extractor and Unified Analysis..."
-        # Run the main application with --once flag to extract data and then run analysis
+        # First extract data
+        echo "🔄 Step 1: Extracting Slack data..."
         node dist/index.js --once
+        # Then run unified analysis on the latest CSV
+        echo "🧠 Step 2: Running unified analysis..."
+        LATEST_CSV=$(ls -t exports/slack-data-export_*.csv | head -n1)
+        if [ -f "$LATEST_CSV" ]; then
+          echo "📄 Using CSV file: $LATEST_CSV"
+          node run_unified_workflow.js "$LATEST_CSV"
+        else
+          echo "❌ No CSV file found for analysis"
+          exit 1
+        fi
       continue-on-error: true
       
     - name: Upload Analysis Artifacts
@@ -66,7 +77,7 @@ jobs:
           echo "### Analysis Results" >> analysis-summary.md
           echo "" >> analysis-summary.md
           echo "- **Messages Analyzed:** $(jq -r '.totalMessages' exports/analysis-summary.json)" >> analysis-summary.md
-          echo "- **Tokens Used:** $(jq -r '.tokensUsed' exports/analysis-summary.json)" >> analysis-summary.md
+          echo "- **Tokens Used:** $(jq -r '.totalTokens' exports/analysis-summary.json)" >> analysis-summary.md
           echo "- **Presentation URL:** $(jq -r '.presentationUrl' exports/analysis-summary.json)" >> analysis-summary.md
           echo "- **Report File:** $(jq -r '.markdownFile' exports/analysis-summary.json)" >> analysis-summary.md
         fi
@@ -102,7 +113,7 @@ jobs:
               const summary = JSON.parse(fs.readFileSync('./exports/analysis-summary.json', 'utf8'));
               comment += `✅ **Unified Analysis Complete**\\n`;
               comment += `- Messages: ${summary.totalMessages}\\n`;
-              comment += `- Tokens: ${summary.tokensUsed}\\n`;
+              comment += `- Tokens: ${summary.totalTokens}\\n`;
               comment += `- Presentation: ${summary.presentationUrl}\\n`;
             }
             

@@ -20,16 +20,6 @@ class Config {
     };
   }
 
-  // Dropbox Configuration
-  get dropbox() {
-    return {
-      accessToken: process.env.DROPBOX_ACCESS_TOKEN,
-      refreshToken: process.env.DROPBOX_REFRESH_TOKEN,
-      clientId: process.env.DROPBOX_CLIENT_ID,
-      clientSecret: process.env.DROPBOX_CLIENT_SECRET,
-      folderPath: process.env.DROPBOX_FOLDER_PATH || '/slack-exports'
-    };
-  }
 
   // Analysis Configuration
   get analysis() {
@@ -139,19 +129,9 @@ Week of [Date] Snapshot
   validateRequiredEnvVars(): void {
     const requiredVars = [
       'SLACK_BOT_TOKEN',
-      'SLACK_WORKSPACE_ID',
-      'DROPBOX_ACCESS_TOKEN'
+      'SLACK_WORKSPACE_ID'
     ];
     
-    // Check if we have refresh token setup (optional but recommended)
-    const hasRefreshToken = process.env.DROPBOX_REFRESH_TOKEN && 
-                           process.env.DROPBOX_CLIENT_ID && 
-                           process.env.DROPBOX_CLIENT_SECRET;
-    
-    if (!hasRefreshToken) {
-      console.log('⚠️  Warning: No refresh token setup detected. Dropbox access tokens expire after ~4 hours.');
-      console.log('   For persistent access, set DROPBOX_REFRESH_TOKEN, DROPBOX_CLIENT_ID, and DROPBOX_CLIENT_SECRET');
-    }
 
     // Check analysis API keys (optional)
     const hasAnalysisKeys = process.env.OPENAI_API_KEY && process.env.GAMMA_API_KEY;
@@ -176,13 +156,6 @@ Week of [Date] Snapshot
       );
     }
 
-    // Validate Dropbox access token format
-    if (!process.env.DROPBOX_ACCESS_TOKEN?.startsWith('sl.') && !process.env.DROPBOX_ACCESS_TOKEN?.startsWith('slx.')) {
-      throw new Error(
-        'DROPBOX_ACCESS_TOKEN must be a valid Dropbox access token.\n' +
-        'Access tokens typically start with "sl." for short-lived tokens or "slx." for long-lived tokens.'
-      );
-    }
   }
 
   /**
@@ -191,7 +164,6 @@ Week of [Date] Snapshot
   getAll() {
     return {
       slack: this.slack,
-      dropbox: this.dropbox,
       analysis: this.analysis,
       scheduling: this.scheduling,
       app: this.app
@@ -204,7 +176,6 @@ Week of [Date] Snapshot
   logConfig(): void {
     console.log('Configuration loaded:');
     console.log(`- Slack Workspace ID: ${this.slack.workspaceId}`);
-    console.log(`- Dropbox Folder Path: ${this.dropbox.folderPath}`);
     console.log(`- Analysis Features: ${this.analysis.enabled ? 'Enabled' : 'Disabled'}`);
     console.log(`- Scheduling Enabled: ${this.scheduling.enabled}`);
     console.log(`- Schedule: ${this.scheduling.cronExpression}`);
