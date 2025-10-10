@@ -70,7 +70,7 @@ jspm_packages/
 
 # Nuxt.js build / generate output
 .nuxt
-dist
+# dist - commented out so compiled files are included in git
 
 # Gatsby files
 .cache/
@@ -157,7 +157,7 @@ typings/
 
 # Nuxt.js build / generate output
 .nuxt
-dist
+# dist - commented out so compiled files are included in git
 
 # Gatsby files
 .cache/
