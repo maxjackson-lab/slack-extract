@@ -13,7 +13,8 @@ class GammaClient {
     constructor(apiKey) {
         this.baseUrl = 'https://public-api.gamma.app/v0.2';
         this.maxContentLength = 750000; // Gamma's character limit
-        this.apiKey = apiKey;
+        // Clean the API key to remove any invalid characters that could break HTTP headers
+        this.apiKey = apiKey.trim().replace(/[\r\n\t]/g, '');
     }
     /**
      * Generate a presentation from markdown content

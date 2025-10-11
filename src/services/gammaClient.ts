@@ -11,7 +11,8 @@ export class GammaClient {
   private maxContentLength: number = 750000; // Gamma's character limit
 
   constructor(apiKey: string) {
-    this.apiKey = apiKey;
+    // Clean the API key to remove any invalid characters that could break HTTP headers
+    this.apiKey = apiKey.trim().replace(/[\r\n\t]/g, '');
   }
 
   /**
