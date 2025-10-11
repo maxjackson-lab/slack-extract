@@ -33,7 +33,7 @@ class UnifiedAnalyzer {
             const unifiedDataset = this.prepareUnifiedDataset(csvData);
             // Step 3: Perform comprehensive unified analysis
             logger.info('Performing unified analysis with GPT-4o');
-            const analysisResult = await this.performUnifiedAnalysis(unifiedDataset);
+            const analysisResult = await this.performUnifiedAnalysis(unifiedDataset, csvData.length);
             // Step 4: Generate presentation
             logger.info('Generating Gamma presentation');
             const presentation = await this.gammaClient.generatePresentation(this.gammaClient.formatMarkdownForPresentation(analysisResult.markdownReport), 'Gambassadors Community Analysis - Unified Insights', `Comprehensive analysis of ${analysisResult.totalMessages} messages from ${new Date().toLocaleDateString()}`);
@@ -43,7 +43,7 @@ class UnifiedAnalyzer {
             logger.info('Unified analysis completed successfully', {
                 totalTime: `${totalTime}ms`,
                 totalMessages: analysisResult.totalMessages,
-                presentationUrl: presentation.url || 'Generated'
+                presentationUrl: presentation.presentationUrl || 'Generated'
             });
             return {
                 analysis: analysisResult,
@@ -390,7 +390,7 @@ ${gammaEmployeeMessages.map((msg, index) => `
     /**
      * Perform comprehensive unified analysis with GPT-4o
      */
-    async performUnifiedAnalysis(unifiedDataset) {
+    async performUnifiedAnalysis(unifiedDataset, totalMessages) {
         // System prompt is handled by the OpenAI client configuration
         const userPrompt = `# Gambassadors Community Analysis
 
@@ -542,19 +542,12 @@ Week of [Copy exact "Time Period" from PRE-CALCULATED STATISTICS above]
         const result = await this.openaiClient.analyzeChunk(mockChunk);
         return {
             totalChunks: 1, // Unified analysis is one comprehensive chunk
-            totalMessages: this.extractMessageCount(unifiedDataset),
+            totalMessages: totalMessages,
             totalTokens: result.tokenUsage.total,
             totalProcessingTime: result.processingTime,
             markdownReport: result.analysis,
             insights: this.extractUnifiedInsights(result.analysis)
         };
-    }
-    /**
-     * Extract message count from dataset
-     */
-    extractMessageCount(dataset) {
-        const match = dataset.match(/Total Messages\*\*: (\d+)/);
-        return match ? parseInt(match[1]) : 0;
     }
     /**
      * Extract unified insights from analysis

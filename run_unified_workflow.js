@@ -45,8 +45,8 @@ async function runUnifiedWorkflow() {
     
     console.log('🎉 SUCCESS!');
     console.log(`📄 Presentation created: ${result.presentation.title || 'Gambassadors Community Analysis'}`);
-    console.log(`🔗 Presentation URL: ${result.presentation.url || 'Generated'}`);
-    console.log(`📊 Presentation ID: ${result.presentation.id || 'N/A'}`);
+    console.log(`🔗 Presentation URL: ${result.presentation.presentationUrl || 'Generated'}`);
+    console.log(`📊 Presentation ID: ${result.presentation.presentationId || 'N/A'}`);
     console.log(`📝 Markdown file: ${result.markdownFile}`);
     
     // Save analysis summary for GitHub workflow
@@ -55,8 +55,8 @@ async function runUnifiedWorkflow() {
       totalMessages: result.analysis.totalMessages,
       totalTokens: result.analysis.totalTokens,
       processingTime: result.analysis.totalProcessingTime,
-      presentationUrl: result.presentation.url || 'Generated',
-      presentationId: result.presentation.id || 'N/A',
+      presentationUrl: result.presentation.presentationUrl || 'Generated',
+      presentationId: result.presentation.presentationId || 'N/A',
       markdownFile: result.markdownFile,
       analysisType: 'unified'
     };

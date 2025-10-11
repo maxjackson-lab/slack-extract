@@ -48,7 +48,7 @@ export class UnifiedAnalyzer {
       
       // Step 3: Perform comprehensive unified analysis
       logger.info('Performing unified analysis with GPT-4o');
-      const analysisResult = await this.performUnifiedAnalysis(unifiedDataset);
+      const analysisResult = await this.performUnifiedAnalysis(unifiedDataset, csvData.length);
       
       // Step 4: Generate presentation
       logger.info('Generating Gamma presentation');
@@ -65,12 +65,12 @@ export class UnifiedAnalyzer {
       logger.info('Unified analysis completed successfully', {
         totalTime: `${totalTime}ms`,
         totalMessages: analysisResult.totalMessages,
-        presentationUrl: (presentation as any).url || 'Generated'
+        presentationUrl: presentation.presentationUrl || 'Generated'
       });
 
       return {
         analysis: analysisResult,
-        presentation: presentation as any,
+        presentation: presentation,
         markdownFile
       };
 
@@ -519,7 +519,7 @@ ${gammaEmployeeMessages.map((msg, index) => `
   /**
    * Perform comprehensive unified analysis with GPT-4o
    */
-  private async performUnifiedAnalysis(unifiedDataset: string): Promise<AggregatedAnalysis> {
+  private async performUnifiedAnalysis(unifiedDataset: string, totalMessages: number): Promise<AggregatedAnalysis> {
     // System prompt is handled by the OpenAI client configuration
 
     const userPrompt = `# Gambassadors Community Analysis
@@ -674,7 +674,7 @@ Week of [Copy exact "Time Period" from PRE-CALCULATED STATISTICS above]
     
     return {
       totalChunks: 1, // Unified analysis is one comprehensive chunk
-      totalMessages: this.extractMessageCount(unifiedDataset),
+      totalMessages: totalMessages,
       totalTokens: result.tokenUsage.total,
       totalProcessingTime: result.processingTime,
       markdownReport: result.analysis,
@@ -684,13 +684,6 @@ Week of [Copy exact "Time Period" from PRE-CALCULATED STATISTICS above]
 
 
 
-  /**
-   * Extract message count from dataset
-   */
-  private extractMessageCount(dataset: string): number {
-    const match = dataset.match(/Total Messages\*\*: (\d+)/);
-    return match ? parseInt(match[1]) : 0;
-  }
 
   /**
    * Extract unified insights from analysis

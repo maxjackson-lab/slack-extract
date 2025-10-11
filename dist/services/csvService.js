@@ -21,7 +21,8 @@ class CsvService {
       { id: 'isThreadReply', title: 'Is_Thread_Reply' },
       { id: 'messageType', title: 'Message_Type' },
       { id: 'hasAttachments', title: 'Has_Attachments' },
-      { id: 'hasFiles', title: 'Has_Files' }
+      { id: 'hasFiles', title: 'Has_Files' },
+      { id: 'totalReactions', title: 'Total_Reactions' }
     ];
   }
 

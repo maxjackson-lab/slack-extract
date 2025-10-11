@@ -98,7 +98,8 @@ class SlackService {
           channel: channelId,
           limit: remainingLimit,
           cursor: cursor,
-          oldest: sevenDaysAgo.toString() // Only get messages from last 7 days
+          oldest: sevenDaysAgo.toString(), // Only get messages from last 7 days
+          include_all_metadata: true // Include reactions and other metadata
         });
 
         if (response.ok) {
@@ -149,7 +150,8 @@ class SlackService {
           ts: threadTs,
           limit: remainingLimit,
           oldest: sevenDaysAgo.toString(), // Only get thread replies from last 7 days
-          cursor: cursor
+          cursor: cursor,
+          include_all_metadata: true // Include reactions and other metadata
         });
 
         if (response.ok) {
@@ -266,11 +268,7 @@ class SlackService {
       messageType: message.type,
       hasAttachments: !!(message.attachments && message.attachments.length > 0),
       hasFiles: !!(message.files && message.files.length > 0),
-      // REACTION FIELDS - REMOVE THESE THREE LINES IF PROBLEMS OCCUR
-      reactions: JSON.stringify(reactions),
-      totalReactions: totalReactions,
-      uniqueReactors: uniqueReactors
-      // END REACTION FIELDS
+      totalReactions: message.reactions ? message.reactions.reduce((total, reaction) => total + reaction.count, 0) : 0,
     };
   }
 

@@ -52,10 +52,6 @@ export declare class UnifiedAnalyzer {
      */
     private performUnifiedAnalysis;
     /**
-     * Extract message count from dataset
-     */
-    private extractMessageCount;
-    /**
      * Extract unified insights from analysis
      */
     private extractUnifiedInsights;
