@@ -1,16 +1,14 @@
-"use strict";
 /**
  * Experimental Channel Themes Prompt
- *
+ * 
  * This file contains an experimental prompt format for channel activity analysis
  * that focuses on thematic patterns rather than single key discussions.
- *
+ * 
  * To use this experimental prompt, set USE_EXPERIMENTAL_CHANNEL_PROMPT=true in your .env file.
  * This file can be safely deleted if the experimental format is not desired.
  */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.EXPERIMENTAL_CHANNEL_ACTIVITY_PROMPT = void 0;
-exports.EXPERIMENTAL_CHANNEL_ACTIVITY_PROMPT = `## Channel Activity 📍
+
+export const EXPERIMENTAL_CHANNEL_ACTIVITY_PROMPT = `## Channel Activity 📍
 
 **Top Channels by Volume:**
 
@@ -60,4 +58,3 @@ exports.EXPERIMENTAL_CHANNEL_ACTIVITY_PROMPT = `## Channel Activity 📍
 
 ---
 `;
-//# sourceMappingURL=channel-themes-experimental.js.map

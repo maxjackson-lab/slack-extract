@@ -7,6 +7,16 @@ import {
 } from '../types/analysis';
 const logger = require('../utils/logger');
 
+// Experimental channel themes prompt (optional)
+let EXPERIMENTAL_CHANNEL_ACTIVITY_PROMPT: string | null = null;
+try {
+  const experimentalPrompt = require('../prompts/channel-themes-experimental');
+  EXPERIMENTAL_CHANNEL_ACTIVITY_PROMPT = experimentalPrompt.EXPERIMENTAL_CHANNEL_ACTIVITY_PROMPT;
+} catch (error) {
+  // Experimental prompt file doesn't exist, that's fine
+  logger.info('Experimental channel themes prompt not found, using default format');
+}
+
 /**
  * Unified analysis engine that processes all Slack data as one cohesive dataset
  * Provides holistic insights rather than chunked summaries
@@ -571,7 +581,9 @@ Week of [Copy exact "Time Period" from PRE-CALCULATED STATISTICS above]
 
 ---
 
-## Channel Activity 📍
+${process.env.USE_EXPERIMENTAL_CHANNEL_PROMPT === 'true' && EXPERIMENTAL_CHANNEL_ACTIVITY_PROMPT ? 
+  EXPERIMENTAL_CHANNEL_ACTIVITY_PROMPT : 
+  `## Channel Activity 📍
 
 **Top Channels by Volume:**
 
@@ -583,6 +595,8 @@ Week of [Copy exact "Time Period" from PRE-CALCULATED STATISTICS above]
 
 **2. [Channel Name]** ([X] msgs, [Y]% of total)
 [Same format]
+
+---`}
 
 ---
 
