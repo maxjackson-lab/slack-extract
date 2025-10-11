@@ -348,8 +348,17 @@ class UnifiedAnalyzer {
 ### Channel Breakdown (Community)
 ${communityChannelStats.channelBreakdown.map(ch => `- **${ch.name}**: ${ch.messageCount} msgs (${ch.percentage}%), ${ch.activeUsers} users, ${ch.threadCount} thread replies, ${ch.reactionCount} reactions`).join('\n')}
 
-### Topic Distribution (Community)
+### Topic Distribution (Community) - BASELINE CATEGORIES
+**Pre-calculated from keyword matching:**
 ${topicDistribution.topics.map(topic => `- **${topic.name}**: ${topic.messageCount} msgs (${topic.percentage}%) across channels: ${topic.channels.join(', ')}`).join('\n')}
+
+**NOTE:** These are BASELINE categories from keyword matching. You MAY identify additional emerging themes from raw message analysis if you can verify 4+ messages and 2+ users discussing a coherent topic not captured above.
+
+### How to Use Topic Distribution:
+1. **Start with these baseline topics** - use EXACT counts for themes that match these categories
+2. **Look for emerging themes** - review raw messages for topics not captured by baseline categories
+3. **Verify emerging themes** - must have 4+ messages, 2+ users, and be verifiable from raw data
+4. **Cross-validate** - your final theme counts should account for all messages when combined
 
 ### Engagement Metrics (Community)
 - **Total Reactions**: ${engagementMetrics.totalReactions}
@@ -422,11 +431,22 @@ CRITICAL REQUIREMENTS:
 
 **EXAMPLES OF USING PRE-CALCULATED STATS:**
 
-✅ CORRECT: "API Integration dominated discussions with 23 messages (34% of community activity), primarily in generate-api-discussion channel where it represented 18 of 37 messages (49%)"
+✅ CORRECT (Using Baseline Topic): "API Integration dominated discussions with 15 messages (23% of community activity), primarily in generate-api-discussion channel - this matches the Pre-Calculated Topic Distribution"
 ❌ WRONG: "API was discussed a lot" (no stats)
+
+✅ CORRECT (Emerging Theme): "Security Concerns emerged as a theme with 4 messages from 4 different users (Jordan, Alex, Taylor, Morgan) discussing enterprise features, encryption, SOC2, and SSO - verified from raw message data"
+❌ WRONG: "Several users mentioned security" (vague, no verification)
 
 ✅ CORRECT: "The community showed strong engagement with 45% of messages receiving reactions and an average of 1.8 reactions per message"  
 ❌ WRONG: "Good engagement" (no numbers)
+
+✅ CORRECT: "Template Customization emerged as a pattern with 5 users (Yazan, Alex, CEO Pro AI, Matthew, Jordan) across 8 messages in 2 channels"
+❌ WRONG: "Many users want template features" (vague, no specific count)
+
+**BASELINE vs EMERGING THEMES:**
+- Use baseline topics from "Topic Distribution (Community)" with EXACT message counts
+- You MAY identify emerging themes not in baseline if verified from raw data (4+ msgs, 2+ users)
+- Label them clearly: "[Baseline]" or "[Emerging - verified from raw data]"
 
 Output structure with statistics integrated throughout...
 
@@ -489,7 +509,7 @@ ${process.env.USE_EXPERIMENTAL_CHANNEL_PROMPT === 'true' && EXPERIMENTAL_CHANNEL
 
 ## Trending Patterns 🔥
 
-**IMPORTANT:** A trend requires 2+ different users discussing a similar theme. List 3-5 trends minimum.
+**IMPORTANT:** A trend requires 4+ different users discussing a similar theme. This ensures patterns are genuine community needs, not coincidental overlap. List 3-5 trends minimum.
 
 **For each trend:**
 - Lead with the theme and stats: "X users discussed [topic] across Y channels (Z messages)"
@@ -497,11 +517,13 @@ ${process.env.USE_EXPERIMENTAL_CHANNEL_PROMPT === 'true' && EXPERIMENTAL_CHANNEL
 - Explain why this matters to the community
 
 **Example format:**
-**Template Customization Requests** (3 users, 5 messages, 7% of API discussions)
+**Template Customization Requests** (5 users, 8 messages, 12% of API discussions)
 - Yazan: "I really need the client to upload his sample deck..." [link]
 - Alex: "Is there a way to upload exact design template..." [link]  
 - CEO Pro AI: "Would love to use existing templates via API" [link]
-*Why it matters: Community wants brand consistency, not generic templates*
+- Matthew: "Option to specify a template via the generate API" [link]
+- Jordan: "Would be great to have template selection" [link]
+*Why it matters: 5 different users across 3 channels shows this is a major community need, not coincidence*
 
 ---
 
