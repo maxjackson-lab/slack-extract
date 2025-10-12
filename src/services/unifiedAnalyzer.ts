@@ -476,12 +476,12 @@ ${topicDistribution.topics.map(topic =>
   `- **${topic.name}**: ${topic.messageCount} msgs (${topic.percentage}%) across channels: ${topic.channels.join(', ')}`
 ).join('\n')}
 
-**NOTE:** These are BASELINE categories from keyword matching. You MAY identify additional emerging themes from raw message analysis if you can verify 4+ messages and 2+ users discussing a coherent topic not captured above.
+**NOTE:** These are BASELINE categories from keyword matching. You MAY identify additional emerging themes from raw message analysis if you can verify 4+ messages and 4+ users discussing a coherent topic not captured above.
 
 ### How to Use Topic Distribution:
 1. **Start with these baseline topics** - use EXACT counts for themes that match these categories
 2. **Look for emerging themes** - review raw messages for topics not captured by baseline categories
-3. **Verify emerging themes** - must have 4+ messages, 2+ users, and be verifiable from raw data
+3. **Verify emerging themes** - must have 4+ messages, 4+ users, and be verifiable from raw data
 4. **Cross-validate** - your final theme counts should account for all messages when combined
 
 ### Engagement Metrics (Community)
