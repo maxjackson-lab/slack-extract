@@ -89,8 +89,8 @@ class SlackService {
       let hasMore = true;
       const MAX_MESSAGES_PER_CHANNEL = config.app.maxMessagesPerChannel;
       
-      // Calculate 7 days ago timestamp (7 days * 24 hours * 60 minutes * 60 seconds = 604800 seconds)
-      const sevenDaysAgo = Math.floor(Date.now() / 1000) - 604800;
+      // Calculate 14 days ago timestamp (14 days * 24 hours * 60 minutes * 60 seconds = 1209600 seconds)
+      const fourteenDaysAgo = Math.floor(Date.now() / 1000) - 1209600;
 
       while (hasMore && messages.length < MAX_MESSAGES_PER_CHANNEL) {
         const remainingLimit = Math.min(200, MAX_MESSAGES_PER_CHANNEL - messages.length);
@@ -98,7 +98,7 @@ class SlackService {
           channel: channelId,
           limit: remainingLimit,
           cursor: cursor,
-          oldest: sevenDaysAgo.toString(), // Only get messages from last 7 days
+          oldest: fourteenDaysAgo.toString(), // Only get messages from last 14 days
           include_all_metadata: true // Include reactions and other metadata
         });
 
@@ -140,8 +140,8 @@ class SlackService {
       let hasMore = true;
       const MAX_THREAD_REPLIES = config.app.maxThreadReplies;
       
-      // Calculate 7 days ago timestamp (7 days * 24 hours * 60 minutes * 60 seconds = 604800 seconds)
-      const sevenDaysAgo = Math.floor(Date.now() / 1000) - 604800;
+      // Calculate 14 days ago timestamp (14 days * 24 hours * 60 minutes * 60 seconds = 1209600 seconds)
+      const fourteenDaysAgo = Math.floor(Date.now() / 1000) - 1209600;
 
       while (hasMore && replies.length < MAX_THREAD_REPLIES) {
         const remainingLimit = Math.min(200, MAX_THREAD_REPLIES - replies.length);
@@ -149,7 +149,7 @@ class SlackService {
           channel: channelId,
           ts: threadTs,
           limit: remainingLimit,
-          oldest: sevenDaysAgo.toString(), // Only get thread replies from last 7 days
+          oldest: fourteenDaysAgo.toString(), // Only get thread replies from last 14 days
           cursor: cursor,
           include_all_metadata: true // Include reactions and other metadata
         });
@@ -270,7 +270,7 @@ class SlackService {
    * Extract all data from Slack workspace
    */
   async extractWorkspaceData() {
-    logger.logLifecycle('Starting Slack data extraction (last 7 days only)');
+    logger.logLifecycle('Starting Slack data extraction (last 14 days only)');
     const startTime = Date.now();
     
     try {
