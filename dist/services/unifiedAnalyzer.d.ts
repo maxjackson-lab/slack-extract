@@ -8,6 +8,13 @@ export declare class UnifiedAnalyzer {
     private gammaClient;
     constructor(openaiApiKey: string, gammaApiKey: string, _config: AnalysisConfig);
     /**
+     * Test API connections
+     */
+    testConnections(): Promise<{
+        openai: boolean;
+        gamma: boolean;
+    }>;
+    /**
      * Perform unified analysis on all Slack data
      */
     analyzeUnifiedData(csvFilePath: string): Promise<{

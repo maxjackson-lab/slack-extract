@@ -250,12 +250,6 @@ class SlackService {
     const urls = this.extractUrls(message.text);
     const slackUrl = await this.getMessagePermalink(channelId, message.ts);
     
-    // REACTION EXTRACTION - EASY TO REMOVE IF PROBLEMS OCCUR
-    const reactions = message.reactions || [];
-    const totalReactions = reactions.reduce((sum, r) => sum + r.count, 0);
-    const uniqueReactors = new Set(reactions.flatMap(r => r.users)).size;
-    // END REACTION EXTRACTION
-    
     return {
       channel: channelName,
       message: message.text || '',

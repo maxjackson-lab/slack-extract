@@ -259,7 +259,8 @@ class SlackService {
       isThreadReply: isThreadReply,
       messageType: message.type,
       hasAttachments: !!(message.attachments && message.attachments.length > 0),
-      hasFiles: !!(message.files && message.files.length > 0)
+      hasFiles: !!(message.files && message.files.length > 0),
+      totalReactions: message.reactions ? message.reactions.reduce((total, reaction) => total + reaction.count, 0) : 0,
     };
   }
 

@@ -33,6 +33,27 @@ export class UnifiedAnalyzer {
   }
 
   /**
+   * Test API connections
+   */
+  async testConnections(): Promise<{ openai: boolean; gamma: boolean }> {
+    try {
+      // Test OpenAI connection
+      const openaiTest = await this.openaiClient.testConnection();
+      
+      // Test Gamma connection  
+      const gammaTest = await this.gammaClient.testConnection();
+      
+      return {
+        openai: openaiTest,
+        gamma: gammaTest
+      };
+    } catch (error) {
+      logger.logError(error, { operation: 'testConnections' });
+      return { openai: false, gamma: false };
+    }
+  }
+
+  /**
    * Perform unified analysis on all Slack data
    */
   async analyzeUnifiedData(csvFilePath: string): Promise<{
@@ -555,7 +576,7 @@ CRITICAL REQUIREMENTS:
 7. Lead with numbers, then dive deep into qualitative examples and user voices
 8. Stats show WHAT happened, quotes and examples show WHY it matters
 9. Don't let percentages drown out the human stories - use stats as anchors, not the whole analysis
-10. Trends require 2+ users AND meaningful theme, not just category grouping
+10. Trends require 4+ users AND meaningful theme, not just category grouping
 
 **Data:** ${unifiedDataset}
 
@@ -575,7 +596,7 @@ CRITICAL REQUIREMENTS:
 
 **BASELINE vs EMERGING THEMES:**
 - Use baseline topics from "Topic Distribution (Community)" with EXACT message counts
-- You MAY identify emerging themes not in baseline if verified from raw data (4+ msgs, 2+ users)
+- You MAY identify emerging themes not in baseline if verified from raw data (4+ msgs, 4+ users)
 - Label them clearly: "[Baseline]" or "[Emerging - verified from raw data]"
 
 Output structure with statistics integrated throughout...

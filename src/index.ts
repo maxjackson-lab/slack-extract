@@ -4,8 +4,7 @@ import config from './config';
 const logger = require('./utils/logger');
 const slackService = require('./services/slackService');
 const csvService = require('./services/csvService');
-import { SlackAnalyzer } from './services/slackAnalyzer';
-import { AnalysisProgress } from './types/analysis';
+import { UnifiedAnalyzer } from './services/unifiedAnalyzer';
 
 /**
  * Main Application
@@ -14,10 +13,39 @@ import { AnalysisProgress } from './types/analysis';
 class SlackExtractorApp {
   private isRunning: boolean = false;
   private cronJob: cron.ScheduledTask | null = null;
-  private analyzer: SlackAnalyzer | null = null;
+  private analyzer: UnifiedAnalyzer | null = null;
 
   constructor() {
     this.setupAnalyzer();
+  }
+
+  /**
+   * Find the latest CSV file in exports directory
+   */
+  private findLatestCsvFile(): string | null {
+    const fs = require('fs');
+    const path = require('path');
+    
+    try {
+      const exportsDir = 'exports';
+      if (!fs.existsSync(exportsDir)) {
+        return null;
+      }
+      
+      const files = fs.readdirSync(exportsDir)
+        .filter((file: string) => file.startsWith('slack-data-export_') && file.endsWith('.csv'))
+        .map((file: string) => ({
+          name: file,
+          path: path.join(exportsDir, file),
+          mtime: fs.statSync(path.join(exportsDir, file)).mtime
+        }))
+        .sort((a: any, b: any) => b.mtime - a.mtime);
+      
+      return files.length > 0 ? files[0].path : null;
+    } catch (error) {
+      logger.logError(error, { operation: 'findLatestCsvFile' });
+      return null;
+    }
   }
 
   /**
@@ -28,7 +56,12 @@ class SlackExtractorApp {
     const gammaApiKey = process.env.GAMMA_API_KEY;
 
     if (openaiApiKey && gammaApiKey) {
-      this.analyzer = new SlackAnalyzer(openaiApiKey, gammaApiKey);
+      const analysisConfig = {
+        ...config.analysis,
+        retryAttempts: 3,
+        retryDelay: 2000
+      };
+      this.analyzer = new UnifiedAnalyzer(openaiApiKey, gammaApiKey, analysisConfig);
       logger.info('Analysis engine initialized with OpenAI and Gamma APIs');
     } else {
       logger.logWarning('Analysis features disabled - missing API keys', {
@@ -118,13 +151,14 @@ class SlackExtractorApp {
         throw new Error('Analysis API connections failed');
       }
 
-      // Set up progress tracking
-      this.analyzer.setProgressCallback((progress: AnalysisProgress) => {
-        this.displayProgress(progress);
-      });
+      // Find CSV file if not provided
+      const csvFile = csvFilePath || this.findLatestCsvFile();
+      if (!csvFile) {
+        throw new Error('No CSV file found. Please run the Slack extractor first.');
+      }
 
       // Run analysis
-      const result = await this.analyzer.analyzeSlackData(csvFilePath);
+      const result = await this.analyzer.analyzeUnifiedData(csvFile);
 
       // Display results
       this.displayAnalysisResults(result);
@@ -135,17 +169,6 @@ class SlackExtractorApp {
     }
   }
 
-  /**
-   * Display analysis progress
-   */
-  private displayProgress(progress: AnalysisProgress): void {
-    if (progress.totalChunks > 0) {
-      const percentage = Math.round((progress.currentChunk / progress.totalChunks) * 100);
-      console.log(`\r📊 Analysis Progress: ${progress.currentChunk}/${progress.totalChunks} (${percentage}%) - ${progress.currentOperation}`);
-    } else {
-      console.log(`\r📊 ${progress.currentOperation}`);
-    }
-  }
 
   /**
    * Display analysis results

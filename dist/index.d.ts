@@ -8,6 +8,10 @@ declare class SlackExtractorApp {
     private analyzer;
     constructor();
     /**
+     * Find the latest CSV file in exports directory
+     */
+    private findLatestCsvFile;
+    /**
      * Setup the analysis engine
      */
     private setupAnalyzer;
@@ -19,10 +23,6 @@ declare class SlackExtractorApp {
      * Run analysis on existing CSV data
      */
     runAnalysis(csvFilePath?: string): Promise<void>;
-    /**
-     * Display analysis progress
-     */
-    private displayProgress;
     /**
      * Display analysis results
      */

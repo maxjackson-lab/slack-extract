@@ -26,6 +26,25 @@ class UnifiedAnalyzer {
         // Config is used by OpenAI client
     }
     /**
+     * Test API connections
+     */
+    async testConnections() {
+        try {
+            // Test OpenAI connection
+            const openaiTest = await this.openaiClient.testConnection();
+            // Test Gamma connection  
+            const gammaTest = await this.gammaClient.testConnection();
+            return {
+                openai: openaiTest,
+                gamma: gammaTest
+            };
+        }
+        catch (error) {
+            logger.logError(error, { operation: 'testConnections' });
+            return { openai: false, gamma: false };
+        }
+    }
+    /**
      * Perform unified analysis on all Slack data
      */
     async analyzeUnifiedData(csvFilePath) {
@@ -352,12 +371,12 @@ ${communityChannelStats.channelBreakdown.map(ch => `- **${ch.name}**: ${ch.messa
 **Pre-calculated from keyword matching:**
 ${topicDistribution.topics.map(topic => `- **${topic.name}**: ${topic.messageCount} msgs (${topic.percentage}%) across channels: ${topic.channels.join(', ')}`).join('\n')}
 
-**NOTE:** These are BASELINE categories from keyword matching. You MAY identify additional emerging themes from raw message analysis if you can verify 4+ messages and 2+ users discussing a coherent topic not captured above.
+**NOTE:** These are BASELINE categories from keyword matching. You MAY identify additional emerging themes from raw message analysis if you can verify 4+ messages and 4+ users discussing a coherent topic not captured above.
 
 ### How to Use Topic Distribution:
 1. **Start with these baseline topics** - use EXACT counts for themes that match these categories
 2. **Look for emerging themes** - review raw messages for topics not captured by baseline categories
-3. **Verify emerging themes** - must have 4+ messages, 2+ users, and be verifiable from raw data
+3. **Verify emerging themes** - must have 4+ messages, 4+ users, and be verifiable from raw data
 4. **Cross-validate** - your final theme counts should account for all messages when combined
 
 ### Engagement Metrics (Community)
@@ -425,7 +444,7 @@ CRITICAL REQUIREMENTS:
 7. Lead with numbers, then dive deep into qualitative examples and user voices
 8. Stats show WHAT happened, quotes and examples show WHY it matters
 9. Don't let percentages drown out the human stories - use stats as anchors, not the whole analysis
-10. Trends require 2+ users AND meaningful theme, not just category grouping
+10. Trends require 4+ users AND meaningful theme, not just category grouping
 
 **Data:** ${unifiedDataset}
 
@@ -445,7 +464,7 @@ CRITICAL REQUIREMENTS:
 
 **BASELINE vs EMERGING THEMES:**
 - Use baseline topics from "Topic Distribution (Community)" with EXACT message counts
-- You MAY identify emerging themes not in baseline if verified from raw data (4+ msgs, 2+ users)
+- You MAY identify emerging themes not in baseline if verified from raw data (4+ msgs, 4+ users)
 - Label them clearly: "[Baseline]" or "[Emerging - verified from raw data]"
 
 Output structure with statistics integrated throughout...

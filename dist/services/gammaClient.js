@@ -15,6 +15,10 @@ class GammaClient {
         this.maxContentLength = 750000; // Gamma's character limit
         // Clean the API key to remove any invalid characters that could break HTTP headers
         this.apiKey = apiKey.trim().replace(/[\r\n\t]/g, '');
+        // Validate that the API key is not empty after sanitization
+        if (!this.apiKey) {
+            throw new Error('Gamma API key is missing or invalid. Please provide a valid API key.');
+        }
     }
     /**
      * Generate a presentation from markdown content

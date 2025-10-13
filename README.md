@@ -13,10 +13,24 @@ A comprehensive tool for extracting Slack workspace data, analyzing it with GPT-
 ## 📋 Prerequisites
 
 - Node.js 16+ 
-- Slack Bot Token with appropriate permissions
+- Slack Bot Token with appropriate permissions (see required scopes below)
 - Dropbox API access
 - OpenAI API key (for analysis)
 - Gamma API key (for presentations)
+
+### Required Slack Bot Scopes
+
+Your Slack bot token must have these OAuth scopes:
+- `channels:history` - Read messages from public channels
+- `channels:read` - List public channels
+- `reactions:read` - Read reaction data from messages
+
+To add these scopes:
+1. Go to https://api.slack.com/apps
+2. Select your Slack app
+3. Navigate to "OAuth & Permissions" in the left sidebar
+4. Under "Scopes" > "Bot Token Scopes", add the required scopes
+5. Reinstall/update the app in your workspace when prompted
 
 ## 🛠️ Installation
 
